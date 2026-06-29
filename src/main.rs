@@ -34,7 +34,13 @@ async fn main() -> Result<()> {
     println!("version:     {}", info.version);
     println!("license:     {}", info.license);
     println!("description: {}", info.description);
-    println!("pages:       {}", info.pages.len());
+    if info.references.len() > 0 {
+        println!(
+            "pages:       {} ({} references)",
+            info.references.len() + 1,
+            info.references.len()
+        );
+    }
     println!("output:      {}", base.display());
 
     Ok(())
