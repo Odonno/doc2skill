@@ -1,0 +1,62 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    name: Build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            binary: doc2skill
+            asset: doc2skill-linux
+          - os: windows-latest
+            binary: doc2skill.exe
+            asset: doc2skill-windows.exe
+          - os: macos-latest
+            binary: doc2skill
+            asset: doc2skill-macos
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo build --release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset }}
+          path: target/release/${{ matrix.binary }}
+
+  release:
+    name: Release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Delete existing latest release
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: gh release delete latest --yes --cleanup-tag
+
+      - name: Create latest prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release create latest \
+            --prerelease \
+            --title "latest" \
+            --notes "" \
+            artifacts/doc2skill-linux \
+            artifacts/doc2skill-windows.exe \
+            artifacts/doc2skill-macos
