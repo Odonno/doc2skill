@@ -1,5 +1,8 @@
+mod fetch;
+
 use clap::Parser;
 use color_eyre::Result;
+use fetch::fetch_crate;
 
 /// Generate agent skills from crate documentation.
 #[derive(Parser, Debug)]
@@ -18,21 +21,28 @@ async fn main() -> Result<()> {
     color_eyre::install()?;
 
     let args = Args::parse();
-
     let target = parse_spec(&args.crate_spec);
-    println!("crate: {}, version: {:?}", target.name, target.version);
 
     let base = args
         .output
         .unwrap_or_else(|| std::path::PathBuf::from(".agents/skills"));
-    println!("output: {}", base.display());
+
+    let client = reqwest::Client::new();
+    let info = fetch_crate(&client, &target).await?;
+
+    println!("name:        {}", info.name);
+    println!("version:     {}", info.version);
+    println!("license:     {}", info.license);
+    println!("description: {}", info.description);
+    println!("pages:       {}", info.pages.len());
+    println!("output:      {}", base.display());
 
     Ok(())
 }
 
-struct CrateTarget {
-    name: String,
-    version: Option<String>,
+pub struct CrateTarget {
+    pub name: String,
+    pub version: Option<String>,
 }
 
 fn parse_spec(spec: &str) -> CrateTarget {
