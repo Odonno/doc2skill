@@ -15,6 +15,11 @@ pub fn write_skill(info: &CrateInfo, base: &Path) -> Result<()> {
         format!("{}{}", frontmatter, info.page.markdown),
     )?;
 
+    fs::write(
+        skill_dir.join("doc.skill"),
+        format!("name = \"{}\"\nversion = \"{}\"\ngen = \"v1\"\n", info.name, info.version),
+    )?;
+
     if !info.references.is_empty() {
         let refs_dir = skill_dir.join("references");
         fs::create_dir_all(&refs_dir)?;
