@@ -1,8 +1,10 @@
 mod fetch;
+mod write;
 
 use clap::Parser;
 use color_eyre::Result;
 use fetch::fetch_crate;
+use write::write_skill;
 
 /// Generate agent skills from crate documentation.
 #[derive(Parser, Debug)]
@@ -29,6 +31,7 @@ async fn main() -> Result<()> {
 
     let client = reqwest::Client::new();
     let info = fetch_crate(&client, &target).await?;
+    write_skill(&info, &base)?;
 
     println!("name:        {}", info.name);
     println!("version:     {}", info.version);
