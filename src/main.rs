@@ -19,8 +19,8 @@ async fn main() -> Result<()> {
 
     let args = Args::parse();
 
-    let (name, version) = parse_spec(&args.crate_spec);
-    println!("crate: {name}, version: {version:?}");
+    let target = parse_spec(&args.crate_spec);
+    println!("crate: {}, version: {:?}", target.name, target.version);
 
     let base = args
         .output
@@ -30,9 +30,20 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-fn parse_spec(spec: &str) -> (&str, Option<&str>) {
+struct CrateTarget {
+    name: String,
+    version: Option<String>,
+}
+
+fn parse_spec(spec: &str) -> CrateTarget {
     match spec.split_once('@') {
-        Some((name, ver)) => (name, Some(ver)),
-        None => (spec, None),
+        Some((name, version)) => CrateTarget {
+            name: name.to_string(),
+            version: Some(version.to_string()),
+        },
+        None => CrateTarget {
+            name: spec.to_string(),
+            version: None,
+        },
     }
 }
