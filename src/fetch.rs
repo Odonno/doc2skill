@@ -165,6 +165,26 @@ async fn fetch_docs(
     Ok((page, references))
 }
 
+/// Strips leading line numbers that docs.rs embeds in scraped-example code blocks.
+/// e.g. "13fn main() {" → "fn main() {", "10    ]" → "    ]"
+fn strip_code_line_numbers(markdown: &str) -> String {
+    let mut out = String::with_capacity(markdown.len());
+    let mut in_fence = false;
+    for line in markdown.lines() {
+        let processed = if line.starts_with("```") {
+            in_fence = !in_fence;
+            line
+        } else if in_fence {
+            line.trim_start_matches(|c: char| c.is_ascii_digit())
+        } else {
+            line
+        };
+        out.push_str(processed);
+        out.push('\n');
+    }
+    out
+}
+
 fn extract_page(
     html: &str,
     page_url: &Url,
@@ -185,6 +205,7 @@ fn extract_page(
         .join("\n");
 
     let markdown = htmd::convert(&content_html).map_err(|e| eyre!("htmd: {e}"))?;
+    let markdown = strip_code_line_numbers(&markdown);
 
     let mut seen = HashSet::new();
     let mut links = Vec::new();
