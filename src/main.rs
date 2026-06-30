@@ -1,33 +1,24 @@
 mod cargo;
+mod cli;
 mod fetch;
 mod search;
 mod write;
 
 use clap::Parser;
-use indicatif::{ProgressBar, ProgressStyle};
 use color_eyre::Result;
 use fetch::fetch_crate;
+use indicatif::{ProgressBar, ProgressStyle};
 use inquire::MultiSelect;
 use search::select_crate;
 use std::path::{Path, PathBuf};
 use write::write_skill;
 
-/// Generate agent skills from crate documentation.
-#[derive(Parser, Debug)]
-#[command(version, about)]
-struct Args {
-    /// Crate to fetch, e.g. `clap` or `clap@4.5`. Omit to search interactively.
-    crate_spec: Option<String>,
-
-    /// Override the base output path (default: .agents/skills)
-    #[arg(short, long)]
-    output: Option<PathBuf>,
-}
+use crate::cli::CliArgs;
 
 fn main() -> Result<()> {
     color_eyre::install()?;
 
-    let args = Args::parse();
+    let args = CliArgs::parse();
     let base = args
         .output
         .unwrap_or_else(|| PathBuf::from(".agents/skills"));
