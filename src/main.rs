@@ -4,6 +4,7 @@ mod search;
 mod write;
 
 use clap::Parser;
+use indicatif::{ProgressBar, ProgressStyle};
 use color_eyre::Result;
 use fetch::fetch_crate;
 use inquire::MultiSelect;
@@ -81,7 +82,16 @@ fn run_multiple(base: &Path) -> Result<()> {
     let total = selected.len();
     let mut ok = 0usize;
 
+    let pb = ProgressBar::new(total as u64);
+    pb.set_style(
+        ProgressStyle::with_template("[{pos}/{len}] {spinner:.cyan} {msg}")
+            .unwrap()
+            .tick_chars("⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"),
+    );
+    pb.enable_steady_tick(std::time::Duration::from_millis(80));
+
     for name in &selected {
+        pb.set_message(format!("fetching {name}…"));
         let target = parse_spec(name);
         match rt.block_on(async {
             let info = fetch_crate(&client, &target).await?;
@@ -89,14 +99,16 @@ fn run_multiple(base: &Path) -> Result<()> {
             Ok::<_, color_eyre::Report>(base.join(&info.name))
         }) {
             Ok(path) => {
-                println!("✓ {}", path.display());
+                pb.println(format!("✓ {}", path.display()));
                 ok += 1;
             }
-            Err(e) => println!("✗ {} — {e}", name),
+            Err(e) => pb.println(format!("✗ {name} — {e}")),
         }
+        pb.inc(1);
     }
 
-    println!("\n{ok}/{total} skills generated");
+    pb.finish_and_clear();
+    println!("{ok}/{total} skills generated");
 
     Ok(())
 }

@@ -17,6 +17,7 @@ htmd = "0.1"
 serde_json = "1"
 inquire = "0.7"
 toml = "0.8"
+indicatif = "0.18.5"
 
 [dev-dependencies]
 assert_cmd = "2"
