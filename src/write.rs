@@ -26,7 +26,7 @@ pub fn write_skill(info: &CrateInfo, base: &Path) -> Result<()> {
     if !info.references.is_empty() {
         let refs_dir = skill_dir.join("references");
         fs::create_dir_all(&refs_dir)?;
-        for r in &info.references {
+        for r in info.references.values() {
             fs::write(refs_dir.join(format!("{}.md", r.slug)), &r.markdown)?;
         }
     }

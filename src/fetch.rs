@@ -1,7 +1,7 @@
 use color_eyre::{eyre::eyre, Result};
 use reqwest::{Client, Url};
 use scraper::{Html, Selector};
-use std::collections::HashSet;
+use std::collections::{BTreeMap, HashSet};
 
 use crate::CrateTarget;
 
@@ -19,7 +19,7 @@ pub struct CrateInfo {
     pub license: String,
     pub author: String,
     pub page: SkillPage,
-    pub references: Vec<SkillPage>,
+    pub references: BTreeMap<String, SkillPage>,
 }
 
 pub async fn fetch_crate(client: &Client, target: &CrateTarget) -> Result<CrateInfo> {
@@ -109,7 +109,7 @@ async fn fetch_docs(
     client: &Client,
     name: &str,
     version: &str,
-) -> Result<(SkillPage, Vec<SkillPage>)> {
+) -> Result<(SkillPage, BTreeMap<String, SkillPage>)> {
     let crate_module = name.replace('-', "_");
     let index_url = format!(
         "https://docs.rs/{}/{}/{}/index.html",
@@ -135,7 +135,7 @@ async fn fetch_docs(
         markdown,
     };
 
-    let mut references = Vec::new();
+    let mut references = BTreeMap::new();
     for link in links {
         let slug = link
             .path_segments()
@@ -152,11 +152,14 @@ async fn fetch_docs(
         let page_url = resp.url().clone();
         let html = resp.text().await?;
         let (title, markdown, _) = extract_page(&html, &page_url, &crate_base)?;
-        references.push(SkillPage {
-            slug,
-            title,
-            markdown,
-        });
+        references.insert(
+            slug.clone(),
+            SkillPage {
+                slug,
+                title,
+                markdown,
+            },
+        );
     }
 
     Ok((page, references))
