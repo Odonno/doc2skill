@@ -25,10 +25,11 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - run: cargo build --release
+      - run: cp target/release/${{ matrix.binary }} target/release/${{ matrix.asset }}
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.asset }}
-          path: target/release/${{ matrix.binary }}
+          path: target/release/${{ matrix.asset }}
 
   release:
     name: Release
@@ -57,6 +58,6 @@ jobs:
             --prerelease \
             --title "latest" \
             --notes "" \
-            artifacts/doc2skill-linux \
-            artifacts/doc2skill-windows.exe \
-            artifacts/doc2skill-macos
+            artifacts/doc2skill-linux/doc2skill-linux \
+            artifacts/doc2skill-windows.exe/doc2skill-windows.exe \
+            artifacts/doc2skill-macos/doc2skill-macos
