@@ -26,7 +26,15 @@ pub async fn fetch_crate(client: &Client, target: &CrateTarget) -> Result<CrateI
     let (version, description, license) = fetch_metadata(client, target).await?;
     let author = fetch_author(client, &target.name).await?;
     let (page, references) = fetch_docs(client, &target.name, &version).await?;
-    Ok(CrateInfo { name: target.name.clone(), version, description, license, author, page, references })
+    Ok(CrateInfo {
+        name: target.name.clone(),
+        version,
+        description,
+        license,
+        author,
+        page,
+        references,
+    })
 }
 
 async fn fetch_metadata(client: &Client, target: &CrateTarget) -> Result<(String, String, String)> {
@@ -72,7 +80,10 @@ async fn fetch_metadata(client: &Client, target: &CrateTarget) -> Result<(String
 async fn fetch_author(client: &Client, name: &str) -> Result<String> {
     let resp: serde_json::Value = client
         .get(format!("https://crates.io/api/v1/crates/{}/owners", name))
-        .header("User-Agent", "doc2skill/0.1 (https://github.com/odonno/doc2skill)")
+        .header(
+            "User-Agent",
+            "doc2skill/0.1 (https://github.com/odonno/doc2skill)",
+        )
         .send()
         .await?
         .error_for_status()?
@@ -117,7 +128,11 @@ async fn fetch_docs(
     let crate_base = final_url.join("./").unwrap();
 
     let (title, markdown, links) = extract_page(&html, &final_url, &crate_base)?;
-    let page = SkillPage { slug: "index".to_owned(), title, markdown };
+    let page = SkillPage {
+        slug: "index".to_owned(),
+        title,
+        markdown,
+    };
 
     let mut references = Vec::new();
     for link in links {
@@ -136,7 +151,11 @@ async fn fetch_docs(
         let page_url = resp.url().clone();
         let html = resp.text().await?;
         let (title, markdown, _) = extract_page(&html, &page_url, &crate_base)?;
-        references.push(SkillPage { slug, title, markdown });
+        references.push(SkillPage {
+            slug,
+            title,
+            markdown,
+        });
     }
 
     Ok((page, references))

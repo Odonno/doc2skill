@@ -17,7 +17,10 @@ pub fn write_skill(info: &CrateInfo, base: &Path) -> Result<()> {
 
     fs::write(
         skill_dir.join("doc.skill"),
-        format!("name = \"{}\"\nversion = \"{}\"\ngen = \"v1\"\n", info.name, info.version),
+        format!(
+            "name = \"{}\"\nversion = \"{}\"\ngen = \"v1\"\n",
+            info.name, info.version
+        ),
     )?;
 
     if !info.references.is_empty() {

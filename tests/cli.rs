@@ -24,7 +24,13 @@ fn skill_md_has_frontmatter() {
     cmd(&["color-eyre"], &dir).success();
     let content = std::fs::read_to_string(dir.path().join("color-eyre/SKILL.md")).unwrap();
     assert!(content.starts_with("---\n"), "missing frontmatter opening");
-    for field in ["name: color-eyre", "license:", "metadata:", "  author:", "  version:"] {
+    for field in [
+        "name: color-eyre",
+        "license:",
+        "metadata:",
+        "  author:",
+        "  version:",
+    ] {
         assert!(content.contains(field), "missing field: {field}");
     }
 }
@@ -41,7 +47,10 @@ fn pinned_version_is_used() {
     let dir = TempDir::new().unwrap();
     cmd(&["color-eyre@0.6"], &dir).success();
     let content = std::fs::read_to_string(dir.path().join("color-eyre/SKILL.md")).unwrap();
-    assert!(content.contains("version: \"0.6"), "expected 0.6.x in frontmatter");
+    assert!(
+        content.contains("version: \"0.6"),
+        "expected 0.6.x in frontmatter"
+    );
 }
 
 #[test]
