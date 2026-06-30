@@ -1,5 +1,6 @@
 mod cargo;
 mod cli;
+mod crate_target;
 mod fetch;
 mod search;
 mod write;
@@ -13,7 +14,7 @@ use search::select_crate;
 use std::path::{Path, PathBuf};
 use write::write_skill;
 
-use crate::cli::CliArgs;
+use crate::{cli::CliArgs, crate_target::CrateTarget};
 
 fn main() -> Result<()> {
     color_eyre::install()?;
@@ -38,7 +39,7 @@ fn main() -> Result<()> {
 }
 
 fn run_single(spec: &str, base: &Path) -> Result<()> {
-    let target = parse_spec(spec);
+    let target = CrateTarget::parse(spec);
     tokio::runtime::Runtime::new()?.block_on(async {
         let client = reqwest::Client::new();
         let info = fetch_crate(&client, &target).await?;
@@ -83,7 +84,7 @@ fn run_multiple(base: &Path) -> Result<()> {
 
     for name in &selected {
         pb.set_message(format!("fetching {name}…"));
-        let target = parse_spec(name);
+        let target = CrateTarget::parse(name);
         match rt.block_on(async {
             let info = fetch_crate(&client, &target).await?;
             write_skill(&info, base)?;
@@ -102,22 +103,4 @@ fn run_multiple(base: &Path) -> Result<()> {
     println!("{ok}/{total} skills generated");
 
     Ok(())
-}
-
-pub struct CrateTarget {
-    pub name: String,
-    pub version: Option<String>,
-}
-
-fn parse_spec(spec: &str) -> CrateTarget {
-    match spec.split_once('@') {
-        Some((name, version)) => CrateTarget {
-            name: name.to_string(),
-            version: Some(version.to_string()),
-        },
-        None => CrateTarget {
-            name: spec.to_string(),
-            version: None,
-        },
-    }
 }
