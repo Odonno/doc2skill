@@ -7,6 +7,7 @@ use crate::CrateTarget;
 
 pub struct SkillPage {
     pub slug: String, // filename stem, e.g. "struct.Arg"
+    #[allow(dead_code)]
     pub title: String,
     pub markdown: String,
 }

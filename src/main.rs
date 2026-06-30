@@ -11,7 +11,7 @@ use fetch::fetch_crate;
 use indicatif::{ProgressBar, ProgressStyle};
 use inquire::MultiSelect;
 use search::select_crate;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use write::write_skill;
 
 use crate::{cli::CliArgs, crate_target::CrateTarget};
@@ -20,9 +20,7 @@ fn main() -> Result<()> {
     color_eyre::install()?;
 
     let args = CliArgs::parse();
-    let base = args
-        .output
-        .unwrap_or_else(|| PathBuf::from(".agents/skills"));
+    let base = args.output;
 
     match args.crate_spec {
         Some(spec) => run_single(&spec, &base)?,
