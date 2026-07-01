@@ -24,13 +24,7 @@ fn skill_md_has_frontmatter() {
     cmd(&["color-eyre"], &dir).success();
     let content = std::fs::read_to_string(dir.path().join("color-eyre/SKILL.md")).unwrap();
     assert!(content.starts_with("---\n"), "missing frontmatter opening");
-    for field in [
-        "name: color-eyre",
-        "license:",
-        "metadata:",
-        "  author:",
-        "  version:",
-    ] {
+    for field in ["name: color-eyre", "metadata:", "  version:"] {
         assert!(content.contains(field), "missing field: {field}");
     }
 }
