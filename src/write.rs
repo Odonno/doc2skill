@@ -6,9 +6,11 @@ pub fn write_skill(info: &CrateInfo, base: &Path) -> Result<()> {
     let skill_dir = base.join(&info.name);
     fs::create_dir_all(&skill_dir)?;
 
+    let skill_name = info.name.replace('_', "-");
+    let description = info.description.split_whitespace().collect::<Vec<_>>().join(" ");
     let frontmatter = format!(
         "---\nname: {}\ndescription: {}\nlicense: {}\nmetadata:\n  author: {}\n  version: \"{}\"\n---\n\n",
-        info.name, info.description, info.license, info.author, info.version
+        skill_name, description, info.license, info.author, info.version
     );
     fs::write(
         skill_dir.join("SKILL.md"),
