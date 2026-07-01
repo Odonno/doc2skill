@@ -165,21 +165,33 @@ async fn fetch_docs(
     Ok((page, references))
 }
 
-/// Strips leading line numbers that docs.rs embeds in scraped-example code blocks.
-/// e.g. "13fn main() {" → "fn main() {", "10    ]" → "    ]"
-fn strip_code_line_numbers(markdown: &str) -> String {
+/// Post-processes converted markdown:
+/// - Bare opening fences (```) default to ```rust (docs.rs uses `rust-example-rendered`,
+///   not `language-rust`, so htmd never picks up the language).
+/// - Strips leading line numbers that docs.rs embeds in scraped-example code blocks
+///   e.g. "13fn main() {" → "fn main() {", "10    ]" → "    ]"
+fn postprocess_markdown(markdown: &str) -> String {
     let mut out = String::with_capacity(markdown.len());
     let mut in_fence = false;
     for line in markdown.lines() {
-        let processed = if line.starts_with("```") {
-            in_fence = !in_fence;
-            line
+        if line.starts_with("```") {
+            if in_fence {
+                out.push_str(line); // closing fence — keep as-is
+                in_fence = false;
+            } else {
+                let after_ticks = line.trim_start_matches('`');
+                if after_ticks.is_empty() {
+                    out.push_str("```rust"); // bare fence → default to rust
+                } else {
+                    out.push_str(line); // already has a language (e.g. console)
+                }
+                in_fence = true;
+            }
         } else if in_fence {
-            line.trim_start_matches(|c: char| c.is_ascii_digit())
+            out.push_str(line.trim_start_matches(|c: char| c.is_ascii_digit()));
         } else {
-            line
-        };
-        out.push_str(processed);
+            out.push_str(line);
+        }
         out.push('\n');
     }
     out
@@ -205,7 +217,7 @@ fn extract_page(
         .join("\n");
 
     let markdown = htmd::convert(&content_html).map_err(|e| eyre!("htmd: {e}"))?;
-    let markdown = strip_code_line_numbers(&markdown);
+    let markdown = postprocess_markdown(&markdown);
 
     let mut seen = HashSet::new();
     let mut links = Vec::new();
