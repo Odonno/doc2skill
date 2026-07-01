@@ -11,4 +11,8 @@ pub struct CliArgs {
     /// Override the base output path
     #[arg(short, long, default_value = ".agents/skills")]
     pub output: PathBuf,
+
+    /// Count tokens in generated skill files instead of generating
+    #[arg(long)]
+    pub count: bool,
 }

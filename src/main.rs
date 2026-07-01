@@ -1,5 +1,7 @@
 mod cargo;
 mod cli;
+#[cfg(feature = "tokens")]
+mod count;
 mod crate_target;
 mod fetch;
 mod search;
@@ -21,6 +23,16 @@ fn main() -> Result<()> {
 
     let args = CliArgs::parse();
     let base = args.output;
+
+    if args.count {
+        #[cfg(feature = "tokens")]
+        return count::run(args.crate_spec.as_deref(), &base);
+        #[cfg(not(feature = "tokens"))]
+        {
+            eprintln!("error: built without 'tokens' feature, recompile with --features tokens");
+            std::process::exit(1);
+        }
+    }
 
     match args.crate_spec {
         Some(spec) => run_single(&spec, &base)?,
