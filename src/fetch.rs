@@ -225,7 +225,7 @@ fn extract_page(
         let href = el.value().attr("href").unwrap_or("");
         if let Ok(resolved) = page_url.join(href) {
             let s = resolved.as_str().to_owned();
-            if s.starts_with(crate_base.as_str()) && seen.insert(s) {
+            if s.starts_with(crate_base.as_str()) && s.ends_with(".html") && seen.insert(s) {
                 links.push(resolved);
             }
         }
