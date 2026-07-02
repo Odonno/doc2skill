@@ -23,9 +23,8 @@ pub struct CrateInfo {
 }
 
 pub async fn fetch_crate(client: &Client, target: &CrateTarget) -> Result<CrateInfo> {
-    // ponytail: sequential owner fetch; use try_join! if latency matters
-    let (version, description, license) = fetch_metadata(client, target).await?;
-    let author = fetch_author(client, &target.name).await?;
+    let ((version, description, license), author) =
+        tokio::try_join!(fetch_metadata(client, target), fetch_author(client, &target.name))?;
     let (page, references) = fetch_docs(client, &target.name, &version).await?;
     Ok(CrateInfo {
         name: target.name.clone(),
