@@ -1,34 +1,18 @@
+use crate::core::{SkillInfo, SkillPage};
 use color_eyre::{eyre::eyre, Result};
 use reqwest::{Client, Url};
 use scraper::{Html, Selector};
 use std::collections::{BTreeMap, HashSet};
 
-use crate::CrateTarget;
+use super::target::CrateTarget;
 
-pub struct SkillPage {
-    pub slug: String, // filename stem, e.g. "struct.Arg"
-    #[allow(dead_code)]
-    pub title: String,
-    pub markdown: String,
-}
-
-pub struct CrateInfo {
-    pub name: String,
-    pub version: String,
-    pub description: String,
-    pub license: String,
-    pub author: String,
-    pub page: SkillPage,
-    pub references: BTreeMap<String, SkillPage>,
-}
-
-pub async fn fetch_crate(client: &Client, target: &CrateTarget) -> Result<CrateInfo> {
+pub async fn fetch_crate(client: &Client, target: &CrateTarget) -> Result<SkillInfo> {
     let ((version, description, license), author) = tokio::try_join!(
         fetch_metadata(client, target),
         fetch_author(client, &target.name)
     )?;
     let (page, references) = fetch_docs(client, &target.name, &version).await?;
-    Ok(CrateInfo {
+    Ok(SkillInfo {
         name: target.name.clone(),
         version,
         description,
@@ -126,7 +110,6 @@ async fn fetch_docs(
 
     let final_url = resp.url().clone();
     let html = resp.text().await?;
-    // crate_base: same dir as index.html — all same-crate links must start here.
     let crate_base = final_url.join("./").unwrap();
 
     let (title, markdown, links) = extract_page(&html, &final_url, &crate_base)?;
@@ -167,24 +150,22 @@ async fn fetch_docs(
 }
 
 /// Post-processes converted markdown:
-/// - Bare opening fences (```) default to ```rust (docs.rs uses `rust-example-rendered`,
-///   not `language-rust`, so htmd never picks up the language).
-/// - Strips leading line numbers that docs.rs embeds in scraped-example code blocks
-///   e.g. "13fn main() {" → "fn main() {", "10    ]" → "    ]"
+/// - Bare opening fences (```) default to ```rust
+/// - Strips leading line numbers from scraped-example code blocks
 fn postprocess_markdown(markdown: &str) -> String {
     let mut out = String::with_capacity(markdown.len());
     let mut in_fence = false;
     for line in markdown.lines() {
         if line.starts_with("```") {
             if in_fence {
-                out.push_str(line); // closing fence — keep as-is
+                out.push_str(line);
                 in_fence = false;
             } else {
                 let after_ticks = line.trim_start_matches('`');
                 if after_ticks.is_empty() {
-                    out.push_str("```rust"); // bare fence → default to rust
+                    out.push_str("```rust");
                 } else {
-                    out.push_str(line); // already has a language (e.g. console)
+                    out.push_str(line);
                 }
                 in_fence = true;
             }

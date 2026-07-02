@@ -4,7 +4,7 @@ use std::time::{Duration, Instant};
 
 const DEBOUNCE: Duration = Duration::from_millis(10);
 
-/// Runs the interactive crate search prompt, returns the selected crate name.
+/// Runs the interactive crate search prompt, returns the selected crate spec.
 pub fn select_crate() -> Result<String> {
     let selected = Text::new("Search crates.io:")
         .with_autocomplete(CrateSearch::new())
@@ -32,7 +32,6 @@ struct CrateSearch {
 impl CrateSearch {
     fn new() -> Self {
         Self {
-            // subtract DEBOUNCE so the very first keystroke is eligible to fetch
             last_changed: Instant::now() - DEBOUNCE,
             cached: Vec::new(),
             fetched_for: String::new(),

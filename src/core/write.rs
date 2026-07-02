@@ -1,8 +1,8 @@
-use crate::fetch::CrateInfo;
+use super::SkillInfo;
 use color_eyre::Result;
 use std::{fs, path::Path};
 
-pub fn build_frontmatter(info: &CrateInfo) -> String {
+pub fn build_frontmatter(info: &SkillInfo) -> String {
     let skill_name = info.name.replace('_', "-");
     let description = info
         .description
@@ -32,7 +32,7 @@ pub fn build_frontmatter(info: &CrateInfo) -> String {
     format!("{}\n\n", lines.join("\n"))
 }
 
-pub fn write_skill(info: &CrateInfo, base: &Path) -> Result<()> {
+pub fn write_skill(info: &SkillInfo, base: &Path) -> Result<()> {
     let skill_dir = base.join(&info.name);
     fs::create_dir_all(&skill_dir)?;
 
@@ -64,11 +64,11 @@ pub fn write_skill(info: &CrateInfo, base: &Path) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::fetch::SkillPage;
+    use crate::core::SkillPage;
     use std::collections::BTreeMap;
 
-    fn make_info(license: &str, author: &str) -> CrateInfo {
-        CrateInfo {
+    fn make_info(license: &str, author: &str) -> SkillInfo {
+        SkillInfo {
             name: "my_crate".to_string(),
             version: "1.0.0".to_string(),
             description: "A test crate".to_string(),

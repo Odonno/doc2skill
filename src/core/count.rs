@@ -4,8 +4,6 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use tiktoken_rs::{cl100k_base, CoreBPE};
 
-use crate::crate_target::CrateTarget;
-
 pub const SKILL_TOKEN_WARN_THRESHOLD: usize = 5000;
 
 struct FileEntry {
@@ -25,8 +23,8 @@ pub struct SkillTokenCount {
     pub references: Vec<RefTokenCount>,
 }
 
-pub fn run(crate_spec: Option<&str>, base: &Path) -> Result<()> {
-    let dirs = skill_dirs(base, crate_spec)?;
+pub fn run(spec: Option<&str>, base: &Path) -> Result<()> {
+    let dirs = skill_dirs(base, spec)?;
     let entries = collect_entries(&dirs);
 
     let total_files: u64 = entries.iter().map(|e| 1 + e.references.len() as u64).sum();
@@ -41,10 +39,11 @@ pub fn run(crate_spec: Option<&str>, base: &Path) -> Result<()> {
     Ok(())
 }
 
-fn skill_dirs(base: &Path, crate_spec: Option<&str>) -> Result<Vec<PathBuf>> {
-    if let Some(spec) = crate_spec {
-        let name = CrateTarget::parse(spec).name;
-        let dir = base.join(&name);
+fn skill_dirs(base: &Path, spec: Option<&str>) -> Result<Vec<PathBuf>> {
+    if let Some(spec) = spec {
+        // ponytail: inline name extraction; no need for CrateTarget here
+        let name = spec.split_once('@').map(|(n, _)| n).unwrap_or(spec);
+        let dir = base.join(name);
         if !dir.is_dir() {
             return Err(eyre!("no skill found for '{name}'"));
         }

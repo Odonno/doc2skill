@@ -1,10 +1,10 @@
 use color_eyre::Result;
 use std::{collections::BTreeMap, fs};
 
-use crate::crate_target::CrateTarget;
+use super::target::CrateTarget;
 
 /// Reads `Cargo.toml` in the current directory and returns a sorted list of
-/// crate targets (name + version) from both `[dependencies]` and `[dev-dependencies]`.
+/// crate specs from both `[dependencies]` and `[dev-dependencies]`.
 /// Handles renamed deps: `alias = { package = "real-name", ... }`.
 pub fn read_cargo_deps() -> Result<Vec<CrateTarget>> {
     let content = fs::read_to_string("Cargo.toml")?;

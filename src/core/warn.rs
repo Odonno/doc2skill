@@ -1,6 +1,6 @@
-use crate::count::count_text_tokens;
-use crate::count::SKILL_TOKEN_WARN_THRESHOLD;
-use crate::fetch::CrateInfo;
+#[cfg(feature = "tokens")]
+use super::count::{count_text_tokens, SKILL_TOKEN_WARN_THRESHOLD};
+use super::SkillInfo;
 
 #[derive(Debug)]
 pub enum SkillWarning {
@@ -9,7 +9,7 @@ pub enum SkillWarning {
     TooManyTokens(usize),
 }
 
-pub fn collect_warnings(info: &CrateInfo) -> Vec<SkillWarning> {
+pub fn collect_warnings(info: &SkillInfo) -> Vec<SkillWarning> {
     let mut warnings = vec![];
     if info.page.markdown.trim().is_empty() {
         warnings.push(SkillWarning::NoContent);

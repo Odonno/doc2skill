@@ -1,24 +1,15 @@
-mod cargo;
 mod cli;
-#[cfg(feature = "tokens")]
-mod count;
-mod crate_target;
-mod fetch;
-mod search;
-mod warn;
-mod write;
+mod core;
+#[cfg(feature = "rust")]
+mod rust;
 
 use clap::Parser;
+use cli::{CliArgs, Language};
 use color_eyre::Result;
-use fetch::fetch_crate;
+use core::{collect_warnings, print_warnings, write_skill, LanguageProvider, SkillWarning};
 use indicatif::{ProgressBar, ProgressStyle};
 use inquire::MultiSelect;
-use search::select_crate;
 use std::path::Path;
-use warn::{collect_warnings, print_warnings};
-use write::write_skill;
-
-use crate::{cli::CliArgs, crate_target::CrateTarget};
 
 fn main() -> Result<()> {
     color_eyre::install()?;
@@ -28,7 +19,7 @@ fn main() -> Result<()> {
 
     if args.count {
         #[cfg(feature = "tokens")]
-        return count::run(args.crate_spec.as_deref(), &base);
+        return core::count::run(args.spec.as_deref(), &base);
         #[cfg(not(feature = "tokens"))]
         {
             eprintln!("error: built without 'tokens' feature, recompile with --features tokens");
@@ -36,25 +27,58 @@ fn main() -> Result<()> {
         }
     }
 
-    match args.crate_spec {
-        Some(spec) => run_single(&spec, &base)?,
-        None if Path::new("Cargo.toml").exists() => run_multiple(&base)?,
-        None => {
-            // Interactive selection runs before the async runtime starts so that
-            // reqwest::blocking (used inside the autocomplete) has no outer Tokio runtime to conflict with.
-            let spec = select_crate()?;
-            run_single(&spec, &base)?;
+    let language = select_language(args.language)?;
+
+    match language {
+        #[cfg(feature = "rust")]
+        Language::Rust => {
+            let provider = rust::RustProvider::new();
+            run(args.spec.as_deref(), &base, &provider)?;
         }
     }
 
     Ok(())
 }
 
-fn run_single(spec: &str, base: &Path) -> Result<()> {
-    let target = CrateTarget::parse(spec);
+fn select_language(lang: Option<Language>) -> Result<Language> {
+    if let Some(l) = lang {
+        return Ok(l);
+    }
+
+    // Build list of available language names at compile time
+    let available: &[(&str, Language)] = &[
+        #[cfg(feature = "rust")]
+        ("Rust", Language::Rust),
+    ];
+
+    if available.len() == 1 {
+        // ponytail: only one language compiled in — skip the prompt
+        return Ok(available[0].1.clone());
+    }
+
+    let names: Vec<&str> = available.iter().map(|(n, _)| *n).collect();
+    let selected = inquire::Select::new("Select language:", names).prompt()?;
+    Ok(available
+        .iter()
+        .find(|(n, _)| *n == selected)
+        .map(|(_, l)| l.clone())
+        .unwrap())
+}
+
+fn run<P: LanguageProvider>(spec: Option<&str>, base: &Path, provider: &P) -> Result<()> {
+    match (spec, provider.read_project_deps()) {
+        (Some(spec), _) => run_single(spec, base, provider),
+        (None, Some(deps)) => run_multiple(deps?, base, provider),
+        (None, None) => {
+            let spec = provider.search_interactive()?;
+            run_single(&spec, base, provider)
+        }
+    }
+}
+
+fn run_single<P: LanguageProvider>(spec: &str, base: &Path, provider: &P) -> Result<()> {
     tokio::runtime::Runtime::new()?.block_on(async {
-        let client = reqwest::Client::new();
-        let info = fetch_crate(&client, &target).await?;
+        let info = provider.fetch_info(spec).await?;
         let warnings = collect_warnings(&info);
         write_skill(&info, base)?;
 
@@ -76,15 +100,13 @@ fn run_single(spec: &str, base: &Path) -> Result<()> {
     })
 }
 
-fn run_multiple(base: &Path) -> Result<()> {
-    let all_crates = cargo::read_cargo_deps()?;
-    let defaults: Vec<usize> = (0..all_crates.len()).collect();
-    let selected = MultiSelect::new("Select crates to generate skills for:", all_crates)
+fn run_multiple<P: LanguageProvider>(deps: Vec<String>, base: &Path, provider: &P) -> Result<()> {
+    let defaults: Vec<usize> = (0..deps.len()).collect();
+    let selected = MultiSelect::new("Select packages to generate skills for:", deps)
         .with_default(&defaults)
         .prompt()?;
 
     let rt = tokio::runtime::Runtime::new()?;
-    let client = reqwest::Client::new();
     let total = selected.len();
     let mut ok = 0usize;
 
@@ -96,12 +118,13 @@ fn run_multiple(base: &Path) -> Result<()> {
     );
     pb.enable_steady_tick(std::time::Duration::from_millis(80));
 
-    let mut all_warnings: Vec<(String, Vec<warn::SkillWarning>)> = vec![];
+    let mut all_warnings: Vec<(String, Vec<SkillWarning>)> = vec![];
 
-    for target in &selected {
-        pb.set_message(format!("fetching {}…", target.name));
+    for spec in &selected {
+        let name = spec.split_once('@').map(|(n, _)| n).unwrap_or(spec);
+        pb.set_message(format!("fetching {}…", name));
         match rt.block_on(async {
-            let info = fetch_crate(&client, target).await?;
+            let info = provider.fetch_info(spec).await?;
             let warnings = collect_warnings(&info);
             write_skill(&info, base)?;
             Ok::<_, color_eyre::Report>((base.join(&info.name), info.name.clone(), warnings))
@@ -113,7 +136,7 @@ fn run_multiple(base: &Path) -> Result<()> {
                 }
                 ok += 1;
             }
-            Err(e) => pb.println(format!("✗ {} — {e}", target.name)),
+            Err(e) => pb.println(format!("✗ {name} — {e}")),
         }
         pb.inc(1);
     }
