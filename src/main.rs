@@ -5,6 +5,7 @@ mod count;
 mod crate_target;
 mod fetch;
 mod search;
+mod warn;
 mod write;
 
 use clap::Parser;
@@ -14,46 +15,10 @@ use indicatif::{ProgressBar, ProgressStyle};
 use inquire::MultiSelect;
 use search::select_crate;
 use std::path::Path;
+use warn::{collect_warnings, print_warnings};
 use write::write_skill;
 
-use crate::{cli::CliArgs, crate_target::CrateTarget, fetch::CrateInfo};
-
-#[derive(Debug)]
-enum SkillWarning {
-    NoContent,
-    #[cfg(feature = "tokens")]
-    TooManyTokens(usize),
-}
-
-fn collect_warnings(info: &CrateInfo) -> Vec<SkillWarning> {
-    let mut warnings = vec![];
-    if info.page.markdown.trim().is_empty() {
-        warnings.push(SkillWarning::NoContent);
-    }
-    #[cfg(feature = "tokens")]
-    if let Ok(tokens) = count::count_text_tokens(&info.page.markdown) {
-        if tokens > count::SKILL_TOKEN_WARN_THRESHOLD {
-            warnings.push(SkillWarning::TooManyTokens(tokens));
-        }
-    }
-    warnings
-}
-
-fn print_warnings(name: &str, warnings: &[SkillWarning]) {
-    for w in warnings {
-        let msg = match w {
-            SkillWarning::NoContent => format!("\x1b[33m⚠ {name}: no content\x1b[0m"),
-            #[cfg(feature = "tokens")]
-            SkillWarning::TooManyTokens(tokens) => {
-                format!(
-                    "\x1b[33m⚠ {name}: skill content too large ({tokens} tokens > {})\x1b[0m",
-                    count::SKILL_TOKEN_WARN_THRESHOLD
-                )
-            }
-        };
-        println!("{msg}");
-    }
-}
+use crate::{cli::CliArgs, crate_target::CrateTarget};
 
 fn main() -> Result<()> {
     color_eyre::install()?;
@@ -131,7 +96,7 @@ fn run_multiple(base: &Path) -> Result<()> {
     );
     pb.enable_steady_tick(std::time::Duration::from_millis(80));
 
-    let mut all_warnings: Vec<(String, Vec<SkillWarning>)> = vec![];
+    let mut all_warnings: Vec<(String, Vec<warn::SkillWarning>)> = vec![];
 
     for target in &selected {
         pb.set_message(format!("fetching {}…", target.name));
