@@ -21,7 +21,7 @@ pub struct CliArgs {
     pub language: Option<Language>,
 }
 
-#[derive(clap::ValueEnum, Clone, Debug)]
+#[derive(clap::ValueEnum, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Language {
     #[cfg(feature = "rust")]
     Rust,
