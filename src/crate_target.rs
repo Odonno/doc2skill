@@ -1,3 +1,5 @@
+use std::fmt;
+
 pub struct CrateTarget {
     pub name: String,
     pub version: Option<String>,
@@ -14,6 +16,15 @@ impl CrateTarget {
                 name: spec.to_string(),
                 version: None,
             },
+        }
+    }
+}
+
+impl fmt::Display for CrateTarget {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match &self.version {
+            Some(v) => write!(f, "{}@{}", self.name, v),
+            None => write!(f, "{}", self.name),
         }
     }
 }

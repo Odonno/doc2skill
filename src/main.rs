@@ -92,11 +92,10 @@ fn run_multiple(base: &Path) -> Result<()> {
     );
     pb.enable_steady_tick(std::time::Duration::from_millis(80));
 
-    for name in &selected {
-        pb.set_message(format!("fetching {name}…"));
-        let target = CrateTarget::parse(name);
+    for target in &selected {
+        pb.set_message(format!("fetching {}…", target.name));
         match rt.block_on(async {
-            let info = fetch_crate(&client, &target).await?;
+            let info = fetch_crate(&client, target).await?;
             write_skill(&info, base)?;
             Ok::<_, color_eyre::Report>(base.join(&info.name))
         }) {
@@ -104,7 +103,7 @@ fn run_multiple(base: &Path) -> Result<()> {
                 pb.println(format!("✓ {}", path.display()));
                 ok += 1;
             }
-            Err(e) => pb.println(format!("✗ {name} — {e}")),
+            Err(e) => pb.println(format!("✗ {} — {e}", target.name)),
         }
         pb.inc(1);
     }
