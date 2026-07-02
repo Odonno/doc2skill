@@ -1,4 +1,4 @@
-use color_eyre::eyre::eyre;
+use color_eyre::{eyre::eyre, Result};
 use indicatif::{ProgressBar, ProgressStyle};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -6,7 +6,7 @@ use tiktoken_rs::{cl100k_base, CoreBPE};
 
 use crate::crate_target::CrateTarget;
 
-const SKILL_TOKEN_WARN_THRESHOLD: usize = 5000;
+pub const SKILL_TOKEN_WARN_THRESHOLD: usize = 5000;
 
 struct FileEntry {
     skill_name: String,
@@ -25,7 +25,7 @@ pub struct SkillTokenCount {
     pub references: Vec<RefTokenCount>,
 }
 
-pub fn run(crate_spec: Option<&str>, base: &Path) -> color_eyre::Result<()> {
+pub fn run(crate_spec: Option<&str>, base: &Path) -> Result<()> {
     let dirs = skill_dirs(base, crate_spec)?;
     let entries = collect_entries(&dirs);
 
@@ -41,7 +41,7 @@ pub fn run(crate_spec: Option<&str>, base: &Path) -> color_eyre::Result<()> {
     Ok(())
 }
 
-fn skill_dirs(base: &Path, crate_spec: Option<&str>) -> color_eyre::Result<Vec<PathBuf>> {
+fn skill_dirs(base: &Path, crate_spec: Option<&str>) -> Result<Vec<PathBuf>> {
     if let Some(spec) = crate_spec {
         let name = CrateTarget::parse(spec).name;
         let dir = base.join(&name);
@@ -142,6 +142,11 @@ fn count_all(entries: &[FileEntry], bpe: &CoreBPE, pb: &ProgressBar) -> Vec<Skil
 fn count_file_tokens(path: &Path, bpe: &CoreBPE) -> usize {
     let text = fs::read_to_string(path).unwrap_or_default();
     bpe.encode_with_special_tokens(&text).len()
+}
+
+pub fn count_text_tokens(text: &str) -> Result<usize> {
+    let bpe = cl100k_base().map_err(|e| eyre!("{e}"))?;
+    Ok(bpe.encode_with_special_tokens(text).len())
 }
 
 fn print_tree(base: &Path, results: &[SkillTokenCount]) {

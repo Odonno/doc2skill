@@ -16,7 +16,44 @@ use search::select_crate;
 use std::path::Path;
 use write::write_skill;
 
-use crate::{cli::CliArgs, crate_target::CrateTarget};
+use crate::{cli::CliArgs, crate_target::CrateTarget, fetch::CrateInfo};
+
+#[derive(Debug)]
+enum SkillWarning {
+    NoContent,
+    #[cfg(feature = "tokens")]
+    TooManyTokens(usize),
+}
+
+fn collect_warnings(info: &CrateInfo) -> Vec<SkillWarning> {
+    let mut warnings = vec![];
+    if info.page.markdown.trim().is_empty() {
+        warnings.push(SkillWarning::NoContent);
+    }
+    #[cfg(feature = "tokens")]
+    if let Ok(tokens) = count::count_text_tokens(&info.page.markdown) {
+        if tokens > count::SKILL_TOKEN_WARN_THRESHOLD {
+            warnings.push(SkillWarning::TooManyTokens(tokens));
+        }
+    }
+    warnings
+}
+
+fn print_warnings(name: &str, warnings: &[SkillWarning]) {
+    for w in warnings {
+        let msg = match w {
+            SkillWarning::NoContent => format!("\x1b[33m⚠ {name}: no content\x1b[0m"),
+            #[cfg(feature = "tokens")]
+            SkillWarning::TooManyTokens(tokens) => {
+                format!(
+                    "\x1b[33m⚠ {name}: skill content too large ({tokens} tokens > {})\x1b[0m",
+                    count::SKILL_TOKEN_WARN_THRESHOLD
+                )
+            }
+        };
+        println!("{msg}");
+    }
+}
 
 fn main() -> Result<()> {
     color_eyre::install()?;
@@ -53,6 +90,7 @@ fn run_single(spec: &str, base: &Path) -> Result<()> {
     tokio::runtime::Runtime::new()?.block_on(async {
         let client = reqwest::Client::new();
         let info = fetch_crate(&client, &target).await?;
+        let warnings = collect_warnings(&info);
         write_skill(&info, base)?;
 
         println!("name:        {}", info.name);
@@ -67,6 +105,7 @@ fn run_single(spec: &str, base: &Path) -> Result<()> {
             );
         }
         println!("output:      {}", base.display());
+        print_warnings(&info.name, &warnings);
 
         Ok(())
     })
@@ -92,15 +131,21 @@ fn run_multiple(base: &Path) -> Result<()> {
     );
     pb.enable_steady_tick(std::time::Duration::from_millis(80));
 
+    let mut all_warnings: Vec<(String, Vec<SkillWarning>)> = vec![];
+
     for target in &selected {
         pb.set_message(format!("fetching {}…", target.name));
         match rt.block_on(async {
             let info = fetch_crate(&client, target).await?;
+            let warnings = collect_warnings(&info);
             write_skill(&info, base)?;
-            Ok::<_, color_eyre::Report>(base.join(&info.name))
+            Ok::<_, color_eyre::Report>((base.join(&info.name), info.name.clone(), warnings))
         }) {
-            Ok(path) => {
+            Ok((path, name, warnings)) => {
                 pb.println(format!("✓ {}", path.display()));
+                if !warnings.is_empty() {
+                    all_warnings.push((name, warnings));
+                }
                 ok += 1;
             }
             Err(e) => pb.println(format!("✗ {} — {e}", target.name)),
@@ -110,6 +155,9 @@ fn run_multiple(base: &Path) -> Result<()> {
 
     pb.finish_and_clear();
     println!("{ok}/{total} skills generated");
+    for (name, warnings) in &all_warnings {
+        print_warnings(name, warnings);
+    }
 
     Ok(())
 }

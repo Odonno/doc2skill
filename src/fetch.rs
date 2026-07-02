@@ -23,8 +23,10 @@ pub struct CrateInfo {
 }
 
 pub async fn fetch_crate(client: &Client, target: &CrateTarget) -> Result<CrateInfo> {
-    let ((version, description, license), author) =
-        tokio::try_join!(fetch_metadata(client, target), fetch_author(client, &target.name))?;
+    let ((version, description, license), author) = tokio::try_join!(
+        fetch_metadata(client, target),
+        fetch_author(client, &target.name)
+    )?;
     let (page, references) = fetch_docs(client, &target.name, &version).await?;
     Ok(CrateInfo {
         name: target.name.clone(),
