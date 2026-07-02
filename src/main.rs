@@ -1,5 +1,7 @@
 mod cli;
 mod core;
+#[cfg(feature = "csharp")]
+mod csharp;
 #[cfg(feature = "rust")]
 mod rust;
 
@@ -35,6 +37,11 @@ fn main() -> Result<()> {
             let provider = rust::RustProvider::new();
             run(args.spec.as_deref(), &base, &provider)?;
         }
+        #[cfg(feature = "csharp")]
+        Language::Csharp => {
+            let provider = csharp::CSharpProvider::new();
+            run(args.spec.as_deref(), &base, &provider)?;
+        }
     }
 
     Ok(())
@@ -49,6 +56,8 @@ fn select_language(lang: Option<Language>) -> Result<Language> {
     let available: &[(&str, Language)] = &[
         #[cfg(feature = "rust")]
         ("Rust", Language::Rust),
+        #[cfg(feature = "csharp")]
+        ("C#", Language::Csharp),
     ];
 
     if available.len() == 1 {

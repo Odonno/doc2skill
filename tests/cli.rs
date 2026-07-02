@@ -6,6 +6,8 @@ fn cmd(args: &[&str], dir: &TempDir) -> assert_cmd::assert::Assert {
     Command::cargo_bin("doc2skill")
         .unwrap()
         .args(args)
+        .arg("--language")
+        .arg("rust")
         .arg("--output")
         .arg(dir.path())
         .assert()

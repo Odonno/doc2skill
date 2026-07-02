@@ -25,4 +25,6 @@ pub struct CliArgs {
 pub enum Language {
     #[cfg(feature = "rust")]
     Rust,
+    #[cfg(feature = "csharp")]
+    Csharp,
 }

@@ -26,6 +26,7 @@ predicates = "3"
 temp-dir = "0.2"
 
 [features]
-default = ["tokens", "rust"]
+default = ["tokens", "rust", "csharp"]
 tokens = ["dep:tiktoken-rs"]
 rust = []
+csharp = []
