@@ -1,7 +1,13 @@
 [package]
 name = "doc2skill"
-version = "0.1.0"
-edition = "2021"
+version = "0.1.1"
+edition = "2024"
+description = "Generate agent skills from package documentation"
+repository = "https://github.com/Odonno/doc2skill"
+readme = "README.md"
+license-file = "LICENSE"
+keywords = ["cli", "skills", "ai"]
+categories = ["command-line-utilities"]
 
 [[bin]]
 name = "doc2skill"
