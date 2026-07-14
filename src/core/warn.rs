@@ -1,6 +1,6 @@
-#[cfg(feature = "tokens")]
-use super::count::{count_text_tokens, SKILL_TOKEN_WARN_THRESHOLD};
 use super::SkillInfo;
+#[cfg(feature = "tokens")]
+use super::count::{SKILL_TOKEN_WARN_THRESHOLD, count_text_tokens};
 
 #[derive(Debug)]
 pub enum SkillWarning {
@@ -15,10 +15,10 @@ pub fn collect_warnings(info: &SkillInfo) -> Vec<SkillWarning> {
         warnings.push(SkillWarning::NoContent);
     }
     #[cfg(feature = "tokens")]
-    if let Ok(tokens) = count_text_tokens(&info.page.markdown) {
-        if tokens > SKILL_TOKEN_WARN_THRESHOLD {
-            warnings.push(SkillWarning::TooManyTokens(tokens));
-        }
+    if let Ok(tokens) = count_text_tokens(&info.page.markdown)
+        && tokens > SKILL_TOKEN_WARN_THRESHOLD
+    {
+        warnings.push(SkillWarning::TooManyTokens(tokens));
     }
     warnings
 }

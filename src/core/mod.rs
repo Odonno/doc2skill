@@ -3,7 +3,7 @@ pub mod count;
 pub mod warn;
 pub mod write;
 
-pub use warn::{collect_warnings, print_warnings, SkillWarning};
+pub use warn::{SkillWarning, collect_warnings, print_warnings};
 pub use write::write_skill;
 
 use color_eyre::Result;

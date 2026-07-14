@@ -1,5 +1,5 @@
 use crate::core::{SkillInfo, SkillPage};
-use color_eyre::{eyre::eyre, Result};
+use color_eyre::{Result, eyre::eyre};
 use reqwest::{Client, Url};
 use scraper::{Html, Selector};
 use std::collections::{BTreeMap, HashSet};

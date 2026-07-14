@@ -49,10 +49,10 @@ fn collect_project_files() -> Vec<String> {
                 if let Ok(sub) = fs::read_dir(&p) {
                     for sub_entry in sub.flatten() {
                         let sp = sub_entry.path();
-                        if sp.extension().and_then(|e| e.to_str()) == Some("csproj") {
-                            if let Some(s) = sp.to_str() {
-                                paths.push(s.to_owned());
-                            }
+                        if sp.extension().and_then(|e| e.to_str()) == Some("csproj")
+                            && let Some(s) = sp.to_str()
+                        {
+                            paths.push(s.to_owned());
                         }
                     }
                 }
@@ -109,11 +109,7 @@ fn parse_version_spec(spec: &str) -> Option<&str> {
         .find(|c: char| c.is_whitespace() || c == ',' || c == ')' || c == ']' || c == '*')
         .unwrap_or(stripped.len());
     let v = stripped[..end].trim_end_matches('.');
-    if v.is_empty() {
-        None
-    } else {
-        Some(v)
-    }
+    if v.is_empty() { None } else { Some(v) }
 }
 
 #[cfg(test)]

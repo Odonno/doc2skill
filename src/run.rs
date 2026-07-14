@@ -4,8 +4,8 @@ use inquire::MultiSelect;
 use std::{collections::BTreeMap, path::Path};
 
 use crate::cli::Language;
-use crate::core::{collect_warnings, print_warnings, write_skill, SkillWarning};
-use crate::detection::{language_tag, PackageDetected};
+use crate::core::{SkillWarning, collect_warnings, print_warnings, write_skill};
+use crate::detection::{PackageDetected, language_tag};
 use crate::providers::AnyProvider;
 
 pub fn run_with(spec: Option<&str>, base: &Path, provider: &AnyProvider) -> Result<()> {
