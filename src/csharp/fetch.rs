@@ -32,6 +32,7 @@ pub async fn fetch_package(client: &Client, target: &PackageTarget) -> Result<Sk
             markdown,
         },
         references: BTreeMap::new(), // ponytail: no references for now
+        items: Vec::new(),           // ponytail: no item scanning for C#
     })
 }
 

@@ -49,7 +49,6 @@ fn skill_md_has_frontmatter() -> Result<()> {
     Ok(())
 }
 
-#[ignore]
 #[test]
 fn references_dir_is_created() -> Result<()> {
     let dir = TempDir::new()?;

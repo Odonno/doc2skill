@@ -24,6 +24,9 @@ pub struct SkillInfo {
     pub author: String,
     pub page: SkillPage,
     pub references: BTreeMap<String, SkillPage>,
+    /// Items grouped by category in declaration order (Structs, Enums, Traits, …).
+    /// Each entry is `(display_name, slug)` where slug is the reference file stem.
+    pub items: Vec<(String, Vec<(String, String)>)>,
 }
 
 pub trait LanguageProvider {

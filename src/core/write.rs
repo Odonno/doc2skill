@@ -45,15 +45,30 @@ fn rewrite_reference_links(markdown: &str, references: &BTreeMap<String, SkillPa
     result
 }
 
+fn build_items_section(items: &[(String, Vec<(String, String)>)]) -> String {
+    if items.is_empty() {
+        return String::new();
+    }
+    let mut s = "\n### Items\n".to_string();
+    for (category, entries) in items {
+        s.push_str(&format!("\n#### {}\n\n", category));
+        for (name, slug) in entries {
+            s.push_str(&format!("* [{}](references/{}.md)\n", name, slug));
+        }
+    }
+    s
+}
+
 pub fn write_skill(info: &SkillInfo, base: &Path) -> Result<()> {
     let skill_dir = base.join(&info.name);
     fs::create_dir_all(&skill_dir)?;
 
     let frontmatter = build_frontmatter(info);
     let skill_markdown = rewrite_reference_links(&info.page.markdown, &info.references);
+    let items_section = build_items_section(&info.items);
     fs::write(
         skill_dir.join("SKILL.md"),
-        format!("{}{}", frontmatter, skill_markdown),
+        format!("{}{}{}", frontmatter, skill_markdown, items_section),
     )?;
 
     fs::write(
@@ -93,6 +108,7 @@ mod tests {
                 markdown: "".to_string(),
             },
             references: BTreeMap::new(),
+            items: Vec::new(),
         }
     }
 
@@ -165,5 +181,34 @@ mod tests {
         let refs: BTreeMap<String, SkillPage> = BTreeMap::new();
         let input = "See [docs](https://docs.rs/clap/latest/clap/) for details.";
         assert_eq!(rewrite_reference_links(input, &refs), input);
+    }
+
+    #[test]
+    fn build_items_section_generates_links() {
+        let items = vec![
+            (
+                "Structs".to_string(),
+                vec![
+                    ("Command".to_string(), "struct.Command".to_string()),
+                    ("builder::Arg".to_string(), "struct.builder.Arg".to_string()),
+                ],
+            ),
+            (
+                "Enums".to_string(),
+                vec![("ColorChoice".to_string(), "enum.ColorChoice".to_string())],
+            ),
+        ];
+        let s = build_items_section(&items);
+        assert!(s.contains("### Items"));
+        assert!(s.contains("#### Structs"));
+        assert!(s.contains("* [Command](references/struct.Command.md)"));
+        assert!(s.contains("* [builder::Arg](references/struct.builder.Arg.md)"));
+        assert!(s.contains("#### Enums"));
+        assert!(s.contains("* [ColorChoice](references/enum.ColorChoice.md)"));
+    }
+
+    #[test]
+    fn build_items_section_empty_returns_empty_string() {
+        assert_eq!(build_items_section(&[]), "");
     }
 }

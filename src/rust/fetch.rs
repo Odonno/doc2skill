@@ -1,7 +1,7 @@
 use crate::core::{SkillInfo, SkillPage};
 use color_eyre::{Result, eyre::eyre};
 use reqwest::{Client, Url};
-use scraper::{Html, Selector};
+use scraper::{ElementRef, Html, Selector};
 use std::collections::{BTreeMap, HashSet};
 
 use super::target::CrateTarget;
@@ -11,7 +11,7 @@ pub async fn fetch_crate(client: &Client, target: &CrateTarget) -> Result<SkillI
         fetch_metadata(client, target),
         fetch_author(client, &target.name)
     )?;
-    let (page, references) = fetch_docs(client, &target.name, &version).await?;
+    let (page, references, items) = fetch_docs(client, &target.name, &version).await?;
     Ok(SkillInfo {
         name: target.name.clone(),
         version,
@@ -20,6 +20,7 @@ pub async fn fetch_crate(client: &Client, target: &CrateTarget) -> Result<SkillI
         author,
         page,
         references,
+        items,
     })
 }
 
@@ -90,11 +91,115 @@ fn version_matches(num: &str, spec: &str) -> bool {
     num == spec || num.starts_with(&format!("{}.", spec))
 }
 
+/// Converts a docs.rs item URL to a flat slug used as the reference file stem.
+/// e.g. `…/clap/struct.Command.html`        → `struct.Command`
+/// e.g. `…/clap/builder/struct.Arg.html`    → `struct.builder.Arg`
+/// e.g. `…/clap/builder/styling/enum.AnsiColor.html` → `enum.builder.styling.AnsiColor`
+fn url_to_slug(url: &Url, crate_base: &Url) -> String {
+    let base_path = crate_base.path().trim_end_matches('/');
+    let rel = url
+        .path()
+        .strip_prefix(base_path)
+        .unwrap_or(url.path())
+        .trim_start_matches('/');
+    let rel = rel.strip_suffix(".html").unwrap_or(rel);
+    let parts: Vec<&str> = rel.split('/').filter(|s| !s.is_empty()).collect();
+    match parts.len() {
+        0 => "unknown".to_string(),
+        1 => parts[0].to_string(),
+        _ => {
+            let last = parts[parts.len() - 1];
+            let dot = last.find('.').unwrap_or(last.len());
+            let kind = &last[..dot];
+            let name = if dot < last.len() {
+                &last[dot + 1..]
+            } else {
+                last
+            };
+            let mods = parts[..parts.len() - 1].join(".");
+            format!("{}.{}.{}", kind, mods, name)
+        }
+    }
+}
+
+/// Categories from docs.rs all.html that we capture (in display order).
+const ITEM_CATEGORIES: &[(&str, &str)] = &[
+    ("structs", "Structs"),
+    ("enums", "Enums"),
+    ("traits", "Traits"),
+    ("macros", "Macros"),
+    ("functions", "Functions"),
+    ("constants", "Constants"),
+];
+
+/// Fetches `all.html` and returns items grouped by category (order from `ITEM_CATEGORIES`).
+async fn fetch_all_items(
+    client: &Client,
+    crate_base: &Url,
+) -> Result<Vec<(String, Vec<(String, Url)>)>> {
+    let all_url = crate_base.join("all.html")?;
+    let html = client
+        .get(all_url.as_str())
+        .header("User-Agent", "doc2skill/0.1")
+        .send()
+        .await?
+        .error_for_status()?
+        .text()
+        .await?;
+
+    let doc = Html::parse_document(&html);
+    let main_sel = Selector::parse("#main-content").unwrap();
+    let li_sel = Selector::parse("li a[href]").unwrap();
+    let mut result: Vec<(String, Vec<(String, Url)>)> = Vec::new();
+
+    if let Some(main) = doc.select(&main_sel).next() {
+        let mut current_cat: Option<&str> = None;
+        for child in main.children() {
+            let Some(el) = ElementRef::wrap(child) else {
+                continue;
+            };
+            match el.value().name() {
+                "h3" => {
+                    let id = el.value().attr("id").unwrap_or("");
+                    current_cat = ITEM_CATEGORIES
+                        .iter()
+                        .find(|(cid, _)| *cid == id)
+                        .map(|(_, cat)| *cat);
+                }
+                "ul" => {
+                    if let Some(cat) = current_cat {
+                        let mut items: Vec<(String, Url)> = Vec::new();
+                        for a in el.select(&li_sel) {
+                            let href = a.value().attr("href").unwrap_or("");
+                            let text: String = a.text().collect();
+                            if let Ok(url) = crate_base.join(href)
+                                && url.as_str().starts_with(crate_base.as_str())
+                            {
+                                items.push((text, url));
+                            }
+                        }
+                        if !items.is_empty() {
+                            result.push((cat.to_string(), items));
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+
+    Ok(result)
+}
+
 async fn fetch_docs(
     client: &Client,
     name: &str,
     version: &str,
-) -> Result<(SkillPage, BTreeMap<String, SkillPage>)> {
+) -> Result<(
+    SkillPage,
+    BTreeMap<String, SkillPage>,
+    Vec<(String, Vec<(String, String)>)>,
+)> {
     let crate_module = name.replace('-', "_");
     let index_url = format!(
         "https://docs.rs/{}/{}/{}/index.html",
@@ -119,34 +224,69 @@ async fn fetch_docs(
         markdown,
     };
 
-    let mut references = BTreeMap::new();
+    // Fetch items from all.html; non-fatal if the page doesn't exist.
+    let all_items = fetch_all_items(client, &crate_base)
+        .await
+        .unwrap_or_default();
+
+    // Merge reference URLs from the index docblock links and all.html items.
+    // BTreeMap deduplicates by slug so the same page isn't fetched twice.
+    let mut url_by_slug: BTreeMap<String, Url> = BTreeMap::new();
     for link in links {
-        let slug = link
-            .path_segments()
-            .and_then(|mut s| s.next_back())
-            .and_then(|s| s.strip_suffix(".html"))
-            .unwrap_or("unknown")
-            .to_owned();
-        let resp = client
-            .get(link.as_str())
+        let slug = url_to_slug(&link, &crate_base);
+        url_by_slug.insert(slug, link);
+    }
+    for (_, items) in &all_items {
+        for (_, url) in items {
+            let slug = url_to_slug(url, &crate_base);
+            url_by_slug.insert(slug, url.clone());
+        }
+    }
+
+    // Fetch all reference pages sequentially; skip individual failures.
+    // ponytail: sequential; parallelize with FuturesUnordered if fetch time matters.
+    let mut references = BTreeMap::new();
+    for (slug, url) in &url_by_slug {
+        let Ok(resp) = client
+            .get(url.as_str())
             .header("User-Agent", "doc2skill/0.1")
             .send()
-            .await?
-            .error_for_status()?;
+            .await
+        else {
+            continue;
+        };
         let page_url = resp.url().clone();
-        let html = resp.text().await?;
-        let (title, markdown, _) = extract_page(&html, &page_url, &crate_base)?;
+        let Ok(resp) = resp.error_for_status() else {
+            continue;
+        };
+        let Ok(html) = resp.text().await else {
+            continue;
+        };
+        let Ok((title, ref_markdown, _)) = extract_page(&html, &page_url, &crate_base) else {
+            continue;
+        };
         references.insert(
             slug.clone(),
             SkillPage {
-                slug,
+                slug: slug.clone(),
                 title,
-                markdown,
+                markdown: ref_markdown,
             },
         );
     }
 
-    Ok((page, references))
+    let items: Vec<(String, Vec<(String, String)>)> = all_items
+        .into_iter()
+        .map(|(cat, items)| {
+            let entries = items
+                .into_iter()
+                .map(|(name, url)| (name, url_to_slug(&url, &crate_base)))
+                .collect();
+            (cat, entries)
+        })
+        .collect();
+
+    Ok((page, references, items))
 }
 
 /// Strips inline tags (like `<span>`) from HTML, preserving structural tags
@@ -276,6 +416,32 @@ fn postprocess_markdown(markdown: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn crate_base(url: &str) -> Url {
+        Url::parse(url).unwrap()
+    }
+
+    #[test]
+    fn url_to_slug_root_item() {
+        let base = crate_base("https://docs.rs/clap/4.6.1/clap/");
+        let url = Url::parse("https://docs.rs/clap/4.6.1/clap/struct.Command.html").unwrap();
+        assert_eq!(url_to_slug(&url, &base), "struct.Command");
+    }
+
+    #[test]
+    fn url_to_slug_one_level_module() {
+        let base = crate_base("https://docs.rs/clap/4.6.1/clap/");
+        let url = Url::parse("https://docs.rs/clap/4.6.1/clap/builder/struct.Arg.html").unwrap();
+        assert_eq!(url_to_slug(&url, &base), "struct.builder.Arg");
+    }
+
+    #[test]
+    fn url_to_slug_two_level_module() {
+        let base = crate_base("https://docs.rs/clap/4.6.1/clap/");
+        let url = Url::parse("https://docs.rs/clap/4.6.1/clap/builder/styling/enum.AnsiColor.html")
+            .unwrap();
+        assert_eq!(url_to_slug(&url, &base), "enum.builder.styling.AnsiColor");
+    }
 
     #[test]
     fn strip_inline_tags_keeps_code_element_and_newlines() {
