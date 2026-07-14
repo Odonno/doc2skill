@@ -196,6 +196,34 @@ fn preprocess_pre_blocks(html: &str) -> String {
     out
 }
 
+/// Strips ` "title"` from markdown links: `[text](url "title")` → `[text](url)`.
+fn strip_link_titles(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    let mut rest = s;
+    while let Some(p) = rest.find("](") {
+        out.push_str(&rest[..p + 2]);
+        rest = &rest[p + 2..];
+        if let Some(close) = rest.find(')') {
+            let inner = &rest[..close];
+            // strip trailing ` "..."` title attribute
+            let stripped = if inner.ends_with('"') {
+                if let Some(t) = inner.rfind(" \"") {
+                    &inner[..t]
+                } else {
+                    inner
+                }
+            } else {
+                inner
+            };
+            out.push_str(stripped);
+            out.push(')');
+            rest = &rest[close + 1..];
+        }
+    }
+    out.push_str(rest);
+    out
+}
+
 /// Removes `[§](#anchor)` section-link patterns docs.rs injects into headings.
 fn strip_anchor_links(line: &str) -> String {
     let marker = "[\u{00a7}](#";
@@ -236,9 +264,9 @@ fn postprocess_markdown(markdown: &str) -> String {
         } else if in_fence {
             out.push_str(line.trim_start_matches(|c: char| c.is_ascii_digit()));
         } else if line.starts_with('#') {
-            out.push_str(&strip_anchor_links(line));
+            out.push_str(&strip_link_titles(&strip_anchor_links(line)));
         } else {
-            out.push_str(line);
+            out.push_str(&strip_link_titles(line));
         }
         out.push('\n');
     }
@@ -310,6 +338,24 @@ mod tests {
         let input = "```rust\nfn main() {}\n```\n";
         let result = postprocess_markdown(input);
         assert_eq!(result, "```rust\nfn main() {}\n```\n");
+    }
+
+    #[test]
+    fn strip_link_titles_removes_title_attribute() {
+        assert_eq!(
+            strip_link_titles(
+                r#"*(See also [feature flag reference](_features/index.html "mod clap::_features"))*"#
+            ),
+            "*(See also [feature flag reference](_features/index.html))*"
+        );
+    }
+
+    #[test]
+    fn strip_link_titles_leaves_plain_links_unchanged() {
+        assert_eq!(
+            strip_link_titles("[Discussions](https://github.com/clap-rs/clap/discussions)"),
+            "[Discussions](https://github.com/clap-rs/clap/discussions)"
+        );
     }
 
     #[test]

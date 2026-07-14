@@ -1,6 +1,5 @@
 ---
 source: tests/cli.rs
-assertion_line: 23
 expression: content
 ---
 ---
@@ -16,11 +15,11 @@ metadata:
 
 Quick Links:
 
-*   Derive [tutorial](_derive/_tutorial/index.html "mod clap::_derive::_tutorial") and [reference](_derive/index.html "mod clap::_derive")
-*   Builder [tutorial](_tutorial/index.html "mod clap::_tutorial") and [reference](references/struct.Command.md "struct clap::Command")
-*   [Cookbook](_cookbook/index.html "mod clap::_cookbook")
-*   [CLI Concepts](_concepts/index.html "mod clap::_concepts")
-*   [FAQ](_faq/index.html "mod clap::_faq")
+*   Derive [tutorial](_derive/_tutorial/index.html) and [reference](_derive/index.html)
+*   Builder [tutorial](_tutorial/index.html) and [reference](references/struct.Command.md)
+*   [Cookbook](_cookbook/index.html)
+*   [CLI Concepts](_concepts/index.html)
+*   [FAQ](_faq/index.html)
 *   [Discussions](https://github.com/clap-rs/clap/discussions)
 *   [CHANGELOG](https://github.com/clap-rs/clap/blob/v4.6.1/CHANGELOG.md) (includes major version migration guides)
 
@@ -48,7 +47,7 @@ Run
 $ cargo add clap --features derive
 ```
 
-*(See also [feature flag reference](_features/index.html "mod clap::_features"))*
+*(See also [feature flag reference](_features/index.html))*
 
 Then define your CLI in `main.rs`:
 
@@ -97,7 +96,7 @@ Hello Me!
 
 *(version number and `.exe` extension on windows replaced by placeholders)*
 
-See also the derive [tutorial](_derive/_tutorial/index.html "mod clap::_derive::_tutorial") and [reference](_derive/index.html "mod clap::_derive")
+See also the derive [tutorial](_derive/_tutorial/index.html) and [reference](_derive/index.html)
 
 #### Related Projects
 
