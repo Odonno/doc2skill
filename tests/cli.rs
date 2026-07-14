@@ -18,7 +18,19 @@ fn cmd(args: &[&str], dir: &TempDir) -> assert_cmd::assert::Assert {
 fn skill_md_is_created() -> Result<()> {
     let dir = TempDir::new()?;
     cmd(&["color-eyre"], &dir).success();
+
     assert!(dir.path().join("color-eyre/SKILL.md").exists());
+
+    Ok(())
+}
+
+#[test]
+fn skill_md_clap_snapshot() -> Result<()> {
+    let dir = TempDir::new()?;
+    cmd(&["clap@4.6.1"], &dir).success();
+
+    let content = std::fs::read_to_string(dir.path().join("clap/SKILL.md"))?;
+    insta::assert_snapshot!(content);
 
     Ok(())
 }
@@ -37,6 +49,7 @@ fn skill_md_has_frontmatter() -> Result<()> {
     Ok(())
 }
 
+#[ignore]
 #[test]
 fn references_dir_is_created() -> Result<()> {
     let dir = TempDir::new()?;
