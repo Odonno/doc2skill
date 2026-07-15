@@ -33,7 +33,8 @@ predicates = "3"
 temp-dir = "0.2"
 
 [features]
-default = ["tokens", "rust", "csharp"]
+default = ["tokens", "rust", "csharp", "typescript"]
 tokens = ["dep:tiktoken-rs"]
 rust = []
 csharp = []
+typescript = []

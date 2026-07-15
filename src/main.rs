@@ -7,6 +7,8 @@ mod providers;
 mod run;
 #[cfg(feature = "rust")]
 mod rust;
+#[cfg(feature = "typescript")]
+mod typescript;
 
 use clap::Parser;
 use cli::{CliArgs, Language};
@@ -57,6 +59,8 @@ fn select_language() -> Result<Language> {
         ("Rust", Language::Rust),
         #[cfg(feature = "csharp")]
         ("C#", Language::Csharp),
+        #[cfg(feature = "typescript")]
+        ("TypeScript", Language::Typescript),
     ];
 
     if available.len() == 1 {

@@ -9,6 +9,8 @@ pub enum AnyProvider {
     Rust(crate::rust::RustProvider),
     #[cfg(feature = "csharp")]
     Csharp(crate::csharp::CSharpProvider),
+    #[cfg(feature = "typescript")]
+    Typescript(crate::typescript::TypeScriptProvider),
 }
 
 impl AnyProvider {
@@ -18,6 +20,8 @@ impl AnyProvider {
             Self::Rust(p) => p.fetch_info(spec).await,
             #[cfg(feature = "csharp")]
             Self::Csharp(p) => p.fetch_info(spec).await,
+            #[cfg(feature = "typescript")]
+            Self::Typescript(p) => p.fetch_info(spec).await,
         }
     }
 
@@ -27,6 +31,8 @@ impl AnyProvider {
             Self::Rust(p) => p.read_project_deps(),
             #[cfg(feature = "csharp")]
             Self::Csharp(p) => p.read_project_deps(),
+            #[cfg(feature = "typescript")]
+            Self::Typescript(p) => p.read_project_deps(),
         }
     }
 
@@ -36,6 +42,8 @@ impl AnyProvider {
             Self::Rust(p) => p.search_interactive(),
             #[cfg(feature = "csharp")]
             Self::Csharp(p) => p.search_interactive(),
+            #[cfg(feature = "typescript")]
+            Self::Typescript(p) => p.search_interactive(),
         }
     }
 }
@@ -51,6 +59,11 @@ pub fn build_providers() -> BTreeMap<Language, AnyProvider> {
     map.insert(
         Language::Csharp,
         AnyProvider::Csharp(crate::csharp::CSharpProvider::new()),
+    );
+    #[cfg(feature = "typescript")]
+    map.insert(
+        Language::Typescript,
+        AnyProvider::Typescript(crate::typescript::TypeScriptProvider::new()),
     );
     map
 }

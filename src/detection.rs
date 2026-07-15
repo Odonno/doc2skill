@@ -29,5 +29,7 @@ pub fn language_tag(lang: &Language) -> &'static str {
         Language::Rust => "rust",
         #[cfg(feature = "csharp")]
         Language::Csharp => "csharp",
+        #[cfg(feature = "typescript")]
+        Language::Typescript => "typescript",
     }
 }

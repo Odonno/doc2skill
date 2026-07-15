@@ -1,7 +1,7 @@
 # doc2skill
 
-> *"Why create skills with AI when you already have online documentation?  
-> Use the #1 rule of programming: reuse what already exists."*
+> _"Why create skills with AI when you already have online documentation?  
+> Use the #1 rule of programming: reuse what already exists."_
 
 **doc2skill** turns package documentation into ready-to-use agent skills — no prompt engineering, no copy-pasting. Point it at a crate or NuGet package and get a clean Markdown skill file your AI agent can actually read.
 
@@ -31,10 +31,11 @@ mise use github:Odonno/doc2skill
 
 ## Supported Languages
 
-| Language | Auto-detection | Package provider | References |
-|----------|---------------|-----------------|------------|
-| **Rust** | `Cargo.toml` | [crates.io](https://crates.io) | Traits, Structs |
-| **C#** | `*.csproj`, `Directory.Packages.props` | [NuGet](https://www.nuget.org) | *(index / README)* |
+| Language       | Auto-detection                         | Package provider               | References                                           |
+| -------------- | -------------------------------------- | ------------------------------ | ---------------------------------------------------- |
+| **Rust**       | `Cargo.toml`                           | [crates.io](https://crates.io) | Traits, Structs, Enums, Functions, Constants, Macros |
+| **C#**         | `*.csproj`, `Directory.Packages.props` | [NuGet](https://www.nuget.org) | N/A                                                  |
+| **TypeScript** | `package.json`                         | [npm](https://www.npmjs.com)   | Classes, Interfaces, Functions, Variables            |
 
 When a project file is found in the current directory, `doc2skill` automatically reads your dependencies and lets you pick which ones to generate skills for — no flags required.
 

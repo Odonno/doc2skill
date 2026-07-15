@@ -27,4 +27,6 @@ pub enum Language {
     Rust,
     #[cfg(feature = "csharp")]
     Csharp,
+    #[cfg(feature = "typescript")]
+    Typescript,
 }
