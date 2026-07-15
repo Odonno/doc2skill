@@ -1,6 +1,6 @@
 [package]
 name = "doc2skill"
-version = "0.1.1"
+version = "0.2.0"
 edition = "2024"
 description = "Generate agent skills from package documentation"
 repository = "https://github.com/Odonno/doc2skill"
